@@ -138,8 +138,18 @@ add_action( 'init', 'affiliates_version_check' );
 function affiliates_version_check() {
 	global $affiliates_version, $affiliates_admin_messages;
 	$previous_version = get_option( 'affiliates_plugin_version', null );
+	$previous_version_array = array_map( 'intval', explode(".", $previous_version) );
 	$affiliates_version = AFFILIATES_CORE_VERSION;
-	if ( strcmp( $previous_version, $affiliates_version ) < 0 ) {
+	$affiliates_version_array  = array_map( 'intval', explode(".", $affiliates_version) );
+	// if version numbers are not of type 0.0.0, 
+	// add a 0(zero) value in the end of the array
+	if ( count( $previous_version_array ) != 3 ) {
+		array_push( $previous_version_array, 0 );
+	}
+	if ( count( $affiliates_version  ) != 3 ) {
+		array_push( $affiliates_version , 0 );
+	}
+	if ( $previous_version_array < $affiliates_version_array ) {
 		if ( affiliates_update( $previous_version ) ) {
 			update_option( 'affiliates_plugin_version', $affiliates_version );
 		} else {
@@ -522,7 +532,16 @@ function affiliates_update( $previous_version ) {
 		ADD PRIMARY KEY (referral_id),
 		ADD INDEX aff_referrals_ref (reference(20));";
 	}
-	if ( !empty( $previous_version ) && strcmp( $previous_version, "2.8.0" ) < 0 ) {
+	// create an array of integers by spliting the version string
+	$previous_version_array = array_map( 'intval', explode(".", $previous_version) );
+	$default_version_array = array_map( 'intval', explode(".", "2.8.0") );
+	// if version numbers are not of type 0.0.0, 
+	// add a 0(zero) value in the end of the array
+	if ( count( $previous_version_array ) != 3 ) {
+		array_push( $previous_version_array, 0 );
+	}
+	
+	if ( !empty( $previous_version ) && ( $previous_version_array < $default_version_array ) ) {
 		$hits_table = _affiliates_get_tablename( 'hits' );
 		$queries[] = "ALTER TABLE " . $hits_table . "
 		ADD COLUMN campaign_id BIGINT(20) UNSIGNED DEFAULT NULL,
