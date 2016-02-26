@@ -148,7 +148,7 @@ class Affiliates_Utility {
 			}
 			if ( isset( $matches[2] ) ) {
 				// exceeding decimals are TRUNCATED
-				$d = substr( $matches[2], 1, AFFILIATES_REFERRAL_AMOUNT_DECIMALS );
+				$d = substr( $matches[2], 1, apply_filters( 'affiliates_referral_amount_decimals', 2 ) );
 			} else {
 				$d = "0";
 			}
