@@ -37,23 +37,48 @@ if ( !isset( $affiliates_version ) ) {
 require_once AFFILIATES_CORE_LIB . '/class-affiliates.php';
 
 // options
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-options.php' );
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-options.php';
 if ( $affiliates_options == null ) {
 	$affiliates_options = new Affiliates_Options();
 }
 
 // utilities
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-utility.php' );
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-ui-elements.php' );
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-utility.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-ui-elements.php';
 
 // ajax
-include_once AFFILIATES_CORE_LIB . '/class-affiliates-ajax.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-ajax.php';
 
 // forms, shortcodes, widgets
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-contact.php' );
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-registration.php' );
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-registration-widget.php' );
-include_once( AFFILIATES_CORE_LIB . '/class-affiliates-shortcodes.php' ); // don't make it conditional on is_admin(), get_total() is used in Manage Affiliates
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-contact.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-registration.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-registration-widget.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-shortcodes.php'; // don't make it conditional on is_admin(), get_total() is used in Manage Affiliates
+
+// templates and dashboard
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-templates.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/interface-affiliates-dashboard.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-factory.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/interface-affiliates-dashboard-section.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-section.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-login.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-login-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-login-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-registration.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-registration-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-registration-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-overview.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-overview-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-overview-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-earnings.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-earnings-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-earnings-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-profile.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-profile-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-profile-shortcode.php';
 
 // built-in user registration integration
 if (
@@ -64,7 +89,7 @@ if (
 }
 
 // affiliates excluded
-include_once AFFILIATES_CORE_LIB . '/class-affiliates-exclusion.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-exclusion.php';
 
 // affiliates notifications
 require_once AFFILIATES_CORE_LIB . '/class-affiliates-notifications.php';
@@ -471,7 +496,7 @@ function affiliates_setup() {
 			) $charset_collate;";
 	}
 	if ( !empty( $queries ) ) {
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $queries );
 	}
 	if ( $wpdb->get_var( "SHOW TABLES LIKE '" . $affiliates_table . "'" ) == $affiliates_table ) {
@@ -850,21 +875,27 @@ function affiliates_parse_request( &$wp ) {
 		}
 		$affiliates_request_encoded_id = $encoded_id;
 		$hit = affiliates_record_hit( $affiliate_id );
-		setcookie(
-			AFFILIATES_COOKIE_NAME,
-			$encoded_id,
-			$expire,
-			SITECOOKIEPATH,
-			COOKIE_DOMAIN
-		);
-		if ( !empty( $hit['hash'] ) ) {
+		$cookiepaths = array( COOKIEPATH );
+		if ( SITECOOKIEPATH != COOKIEPATH ) {
+			$cookiepaths[] = SITECOOKIEPATH;
+		}
+		foreach ( $cookiepaths as $cookiepath ) {
 			setcookie(
-				AFFILIATES_HASH_COOKIE_NAME,
-				$hit['hash'],
+				AFFILIATES_COOKIE_NAME,
+				$encoded_id,
 				$expire,
-				SITECOOKIEPATH,
+				$cookiepath,
 				COOKIE_DOMAIN
 			);
+			if ( !empty( $hit['hash'] ) ) {
+				setcookie(
+					AFFILIATES_HASH_COOKIE_NAME,
+					$hit['hash'],
+					$expire,
+					$cookiepath,
+					COOKIE_DOMAIN
+				);
+			}
 		}
 		affiliates_pixel_request();
 		unset( $wp->query_vars[$pname] ); // we use this to avoid ending up on the blog listing page
@@ -986,7 +1017,7 @@ function affiliates_maybe_record_uri( $type = null, $uri = null ) {
 
 /**
  * Records a new user agent or retrieves the existing entry's id and returns it.
- * @param unknown $user_agent
+ * @param string $user_agent
  */
 function affiliates_maybe_record_user_agent_id( $user_agent ) {
 
@@ -1184,11 +1215,11 @@ function affiliates_record_hit( $affiliate_id, $now = null, $type = null ) {
  * @param string|array $data additional information that should be stored along with the referral
  * @param string $amount referral amount - if used, a $currency_id must be given
  * @þaram string $currency_id three letter currency code - if used, an $amount must be given
- * @return affiliate id if a valid referral is recorded, otherwise false
+ * @return int affiliate id if a valid referral is recorded, otherwise false
  */
 function affiliates_suggest_referral( $post_id, $description = '', $data = null, $amount = null, $currency_id = null, $status = null, $type = null, $reference = null ) {
 	global $wpdb, $affiliates_options;
-	require_once( 'class-affiliates-service.php' );
+	require_once 'class-affiliates-service.php';
 	$affiliate_id = Affiliates_Service::get_referrer_id();
 	if ( $affiliate_id ) {
 		$hit_id = Affiliates_Service::get_hit_id();
@@ -1503,7 +1534,7 @@ function affiliates_get_id_encodings() {
  * Returns an encoded affiliate id.
  * If AFFILIATES_NO_ID_ENCODING is in effect, the $affiliate_id is returned as-is.
  * @param string|int $affiliate_id the affiliate id to encode
- * @return encoded affiliate id
+ * @return string|int encoded affiliate id
  */
 function affiliates_encode_affiliate_id( $affiliate_id ) {
 	global $affiliates_options;
@@ -1523,7 +1554,7 @@ function affiliates_encode_affiliate_id( $affiliate_id ) {
 /**
  * Checks if an affiliate id is from a currently valid affiliate.
  * @param string $affiliate_id the affiliate id
- * @return returns the affiliate id if valid, otherwise FALSE
+ * @return int|boolean returns the affiliate id if valid, otherwise FALSE
  */
 function affiliates_check_affiliate_id_encoded( $affiliate_id ) {
 
@@ -1543,7 +1574,7 @@ function affiliates_check_affiliate_id_encoded( $affiliate_id ) {
 /**
  * Checks if an affiliate id is from a currently valid affiliate.
  * @param string $affiliate_id the affiliate id
- * @return returns the affiliate id if valid, otherwise FALSE
+ * @return int|boolean returns the affiliate id if valid, otherwise FALSE
  */
 function affiliates_check_affiliate_id( $affiliate_id ) {
 
@@ -1562,7 +1593,7 @@ function affiliates_check_affiliate_id( $affiliate_id ) {
 /**
  * Checks if an md5-encoded affiliate id is from a currently valid affiliate.
  * @param string $affiliate_id_md5 the md5-encoded affiliate id
- * @return returns the (unencoded) affiliate id if valid, otherwise FALSE
+ * @return int|boolean returns the (unencoded) affiliate id if valid, otherwise FALSE
  */
 function affiliates_check_affiliate_id_md5( $affiliate_id_md5 ) {
 
@@ -1580,7 +1611,7 @@ function affiliates_check_affiliate_id_md5( $affiliate_id_md5 ) {
 
 /**
  * Returns the first id of an affiliate of type AFFILIATES_DIRECT_TYPE.
- * @return returns the affiliate id (if there is at least one of type AFFILIATES_DIRECT_TYPE), otherwise FALSE
+ * @return int|boolean returns the affiliate id (if there is at least one of type AFFILIATES_DIRECT_TYPE), otherwise FALSE
  */
 function affiliates_get_direct_id() {
 	global $wpdb;
@@ -1598,21 +1629,21 @@ function affiliates_get_direct_id() {
 
 // only needed when in admin
 if ( is_admin() ) {
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin.php';
-	include_once AFFILIATES_CORE_LIB . '/class-affiliates-settings.php';
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-user-registration.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin.php';
+	require_once AFFILIATES_CORE_LIB . '/class-affiliates-settings.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-user-registration.php';
 	if ( AFFILIATES_PLUGIN_NAME == 'affiliates' ) {
-		include_once AFFILIATES_CORE_LIB . '/class-affiliates-totals.php';
+		require_once AFFILIATES_CORE_LIB . '/class-affiliates-totals.php';
 	}
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-add-ons.php';
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-affiliates.php';
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-hits.php';
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-hits-affiliate.php';
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-hits-uri.php';
-	include_once AFFILIATES_CORE_LIB . '/affiliates-admin-referrals.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-add-ons.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-affiliates.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-hits.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-hits-affiliate.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-hits-uri.php';
+	require_once AFFILIATES_CORE_LIB . '/affiliates-admin-referrals.php';
 
-	include_once AFFILIATES_CORE_LIB . '/class-affiliates-dashboard-widget.php';
-	include_once AFFILIATES_CORE_LIB . '/class-affiliates-admin-user-profile.php';
+	require_once AFFILIATES_CORE_LIB . '/class-affiliates-dashboard-widget.php';
+	require_once AFFILIATES_CORE_LIB . '/class-affiliates-admin-user-profile.php';
 	add_action( 'admin_menu', 'affiliates_admin_menu' );
 	add_action( 'network_admin_menu', 'affiliates_network_admin_menu' );
 }
@@ -1780,7 +1811,7 @@ function affiliates_admin_menu() {
  * Adds network admin menu.
  */
 function affiliates_network_admin_menu() {
-	include_once AFFILIATES_CORE_LIB . '/class-affiliates-settings-network.php';
+	require_once AFFILIATES_CORE_LIB . '/class-affiliates-settings-network.php';
 	$pages = array();
 	$page = add_menu_page(
 		__( 'Affiliates', 'affiliates' ),
@@ -1993,7 +2024,7 @@ function affiliates_get_affiliate( $affiliate_id ) {
 /**
  * Return the user id related to an affiliate.
  * @param int $affiliate_id
- * @return user_id 
+ * @return int user_id
  */
 function affiliates_get_affiliate_user( $affiliate_id ) {
 	global $wpdb;
