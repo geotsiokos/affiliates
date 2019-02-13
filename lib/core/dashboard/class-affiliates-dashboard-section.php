@@ -37,12 +37,27 @@ abstract class Affiliates_Dashboard_Section implements I_Affiliates_Dashboard_Se
 	/**
 	 * @var int the section's order
 	 */
-	protected $order = self::DEFAULT_ORDER;
+	protected static $section_order = self::DEFAULT_SECTION_ORDER;
 
 	/**
 	 * @var string Whether the template is only included for connected users.
 	 */
 	protected $require_user_id = false;
+
+	/**
+	 * @var array the particular URL parameters used for the section
+	 */
+	protected $url_parameters = array();
+
+	/**
+	 * Subclasses need to override to set a particular order.
+	 *
+	 * {@inheritDoc}
+	 * @see I_Affiliates_Dashboard_Section::get_section_order()
+	 */
+	public static function get_section_order() {
+		return self::$section_order;
+	}
 
 	/**
 	 * Create a new dashboard section instance.
@@ -75,6 +90,23 @@ abstract class Affiliates_Dashboard_Section implements I_Affiliates_Dashboard_Se
 	}
 
 	/**
+	 * Outputs the dashboard section's template.
+	 */
+	public function render() {
+		if ( !$this->require_user_id || $this->user_id !== null ) {
+			Affiliates_Templates::include_template( $this->template, array( 'section' => $this ) );
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @see I_Affiliates_Dashboard_Section::get_url_parameters()
+	 */
+	public function get_url_parameters() {
+		return $this->url_parameters;
+	}
+
+	/**
 	 * Returns the user ID related to this instance.
 	 *
 	 * @return int or null
@@ -85,23 +117,17 @@ abstract class Affiliates_Dashboard_Section implements I_Affiliates_Dashboard_Se
 
 	/**
 	 * {@inheritDoc}
-	 * @see I_Affiliates_Dashboard_Section::get_order()
+	 * @see I_Affiliates_Dashboard_Section::get_affiliate_id()
 	 */
-	public function get_order() {
-		return $this->order;
-	}
-
-	public static function get_default_order() {
-		return self::DEFAULT_ORDER;
-	}
-
-	/**
-	 * Outputs the dashboard section's template.
-	 */
-	public function render() {
-		if ( !$this->require_user_id || $this->user_id !== null ) {
-			Affiliates_Templates::include_template( $this->template, array( 'section' => $this ) );
+	public function get_affiliate_id() {
+		$affiliate_id = null;
+		if ( $this->user_id !== null ) {
+			if ( affiliates_user_is_affiliate( $this->get_user_id() ) ) {
+				$affiliate_ids = affiliates_get_user_affiliate( $this->get_user_id() );
+				$affiliate_id = array_shift( $affiliate_ids );
+			}
 		}
+		return $affiliate_id;
 	}
 
 }

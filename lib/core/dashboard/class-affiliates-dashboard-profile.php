@@ -29,9 +29,24 @@ if ( !defined( 'ABSPATH' ) ) {
 class Affiliates_Dashboard_Profile extends Affiliates_Dashboard_Section {
 
 	/**
+	 * Using a high order to have the profile usually shown last.
+	 *
+	 * @var integer
+	 */
+	protected static $section_order = 1000;
+
+	/**
 	 * Initialization - nothing done here at current.
 	 */
 	public static function init() {
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @see I_Affiliates_Dashboard_Section::get_section_order()
+	 */
+	public static function get_section_order() {
+		return self::$section_order;
 	}
 
 	/**

@@ -31,7 +31,7 @@ interface I_Affiliates_Dashboard_Section {
 	/**
 	 * @var integer the default value for the order property
 	 */
-	const DEFAULT_ORDER = 100;
+	const DEFAULT_SECTION_ORDER = 100;
 
 	/**
 	 * Returns the key of the section.
@@ -48,22 +48,35 @@ interface I_Affiliates_Dashboard_Section {
 	public static function get_name();
 
 	/**
-	 * Returns the user ID related to the section instance (for whom it is to be rendered).
-	 *
-	 * @return int or null
-	 */
-	public function get_user_id();
-
-	/**
-	 * Returns the order of the section instance.
+	 * Returns the section order.
 	 *
 	 * @return int
 	 */
-	public function get_order();
+	public static function get_section_order();
 
 	/**
 	 * Outputs the dashboard section.
 	 */
 	public function render();
 
+	/**
+	 * Returns the ID of the affiliate related to the user of the section instance.
+	 *
+	 * @return int or null
+	 */
+	public function get_affiliate_id();
+
+	/**
+	 * Returns an array of URL parameter keys that are specific for the section.
+	 *
+	 * @return string[]
+	 */
+	public function get_url_parameters();
+
+	/**
+	 * Returns the user ID related to the section instance (for whom it is to be rendered).
+	 *
+	 * @return int or null
+	 */
+	public function get_user_id();
 }

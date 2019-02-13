@@ -45,6 +45,7 @@ if ( $affiliates_options == null ) {
 // utilities
 require_once AFFILIATES_CORE_LIB . '/class-affiliates-utility.php';
 require_once AFFILIATES_CORE_LIB . '/class-affiliates-ui-elements.php';
+require_once AFFILIATES_CORE_LIB . '/class-affiliates-log.php';
 
 // ajax
 require_once AFFILIATES_CORE_LIB . '/class-affiliates-ajax.php';
@@ -59,11 +60,11 @@ require_once AFFILIATES_CORE_LIB . '/class-affiliates-shortcodes.php'; // don't 
 require_once AFFILIATES_CORE_LIB . '/class-affiliates-templates.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/interface-affiliates-dashboard.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-factory.php';
-require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard.php';
-require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-block.php';
-require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-section-factory.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/interface-affiliates-dashboard-section.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/interface-affiliates-dashboard-section-table.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-section.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-section-table.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-login.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-login-block.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-login-shortcode.php';
@@ -79,6 +80,9 @@ require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-earnin
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-profile.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-profile-block.php';
 require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-profile-shortcode.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-block.php';
+require_once AFFILIATES_CORE_LIB . '/dashboard/class-affiliates-dashboard-shortcode.php';
 
 // built-in user registration integration
 if (
@@ -446,10 +450,8 @@ function affiliates_setup() {
 				count           INT DEFAULT 1,
 				type            VARCHAR(10) DEFAULT NULL,
 				PRIMARY KEY     (hit_id),
-				INDEX           aid_d_t_ip (affiliate_id,date,time,ip),
 				INDEX           hash (hash),
-				INDEX           aff_hits_ddt (date, datetime),
-				INDEX           aff_hits_dtd (datetime, date),
+				INDEX           idx_date (date),
 				INDEX           aff_hits_acm (affiliate_id, campaign_id),
 				INDEX           aff_hits_src_uri (src_uri_id),
 				INDEX           aff_hits_dest_uri (dest_uri_id),
@@ -605,6 +607,25 @@ function affiliates_update( $previous_version = null ) {
 		ADD INDEX hash (hash);";
 	}
 
+	// from 4.0.0 drop indexes : aff_hits_dtd, aff_hits_ddt, aid_d_t_ip
+	$index = $wpdb->get_results( "SHOW INDEX FROM $hits_table WHERE Key_name = 'aff_hits_dtd'" );
+	if ( is_array( $index ) && count( $index ) > 0 ) {
+		$queries[] = "ALTER TABLE $hits_table DROP INDEX aff_hits_dtd;";
+	}
+	$index = $wpdb->get_results( "SHOW INDEX FROM $hits_table WHERE Key_name = 'aff_hits_ddt'" );
+	if ( is_array( $index ) && count( $index ) > 0 ) {
+		$queries[] = "ALTER TABLE $hits_table DROP INDEX aff_hits_ddt;";
+	}
+	$index = $wpdb->get_results( "SHOW INDEX FROM $hits_table WHERE Key_name = 'aid_d_t_ip'" );
+	if ( is_array( $index ) && count( $index ) > 0 ) {
+		$queries[] = "ALTER TABLE $hits_table DROP INDEX aid_d_t_ip;";
+	}
+	// from 4.0.0 add index : idx_date
+	$index = $wpdb->get_results( "SHOW INDEX FROM $hits_table WHERE Key_name = 'idx_date'" );
+	if ( $index === null || is_array( $index ) && count( $index ) === 0 ) {
+		$queries[] = "ALTER TABLE $hits_table ADD INDEX idx_date (date);";
+	}
+
 	// URIs ... from 2.17.0
 	// add the uris table
 	$uris_table = _affiliates_get_tablename( 'uris' );
@@ -618,6 +639,7 @@ function affiliates_update( $previous_version = null ) {
 		INDEX       type (type)
 		) $charset_collate;";
 	}
+
 	// add uri columns and indexes to the hits table
 	$column = $wpdb->get_row( "SHOW COLUMNS FROM $hits_table LIKE 'src_uri_id'" );
 	if ( empty( $column ) ) {
@@ -803,6 +825,41 @@ function affiliates_init() {
 	if ( class_exists( 'Affiliates_Affiliate' ) && method_exists( 'Affiliates_Affiliate', 'register_attribute_filter' ) ) {
 		Affiliates_Affiliate::register_attribute_filter( 'affiliates_attribute_filter' );
 	}
+	add_action( 'after_plugin_row_' . plugin_basename( AFFILIATES_FILE ), 'affiliates_after_plugin_row', 10, 3 );
+}
+
+/**
+ * Prints a warning when data is deleted on deactivation.
+ *
+ * @param string $plugin_file
+ * @param array $plugin_data
+ * @param string $status
+ */
+function affiliates_after_plugin_row( $plugin_file, $plugin_data, $status ) {
+	if ( $plugin_file == plugin_basename( AFFILIATES_FILE ) ) {
+		$delete_data         = get_option( 'aff_delete_data', false );
+		$delete_network_data = get_option( 'aff_delete_network_data', false );
+		if (
+			( is_plugin_active( $plugin_file ) && $delete_data && current_user_can( 'install_plugins' ) ) ||
+			( is_plugin_active_for_network( $plugin_file ) && $delete_network_data  && current_user_can( 'manage_network_plugins' ) )
+		) {
+			echo '<tr class="active">';
+			echo '<td>&nbsp;</td>';
+			echo '<td colspan="2">';
+			echo '<div style="border: 2px solid #dc3232; padding: 1em">';
+			echo '<p>';
+			echo '<strong>';
+			echo esc_html( __( 'Warning!', 'affiliates' ) );
+			echo '</strong>';
+			echo '</p>';
+			echo '<p>';
+			echo esc_html( __( 'The plugin is configured to delete its data on deactivation.', 'affiliates' ) );
+			echo '</p>';
+			echo '</div>';
+			echo '</td>';
+			echo '</tr>';
+		}
+	}
 }
 
 add_filter( 'query_vars', 'affiliates_query_vars', 999 ); // filter acts late to avoid being messed with by others
@@ -852,9 +909,12 @@ function affiliates_parse_request( &$wp ) {
 	$affiliate_id = isset( $wp->query_vars[$pname] ) ? affiliates_check_affiliate_id_encoded( trim( $wp->query_vars[$pname] ) ) : null;
 	if ( isset( $wp->query_vars[$pname] ) ) {
 		// affiliates-by-username uses this hook
-		$maybe_affiliate_id = apply_filters( 'affiliates_parse_request_affiliate_id', $wp->query_vars[$pname], $affiliate_id );
-		if ( ( $maybe_affiliate_id !== null ) && $maybe_affiliate_id !== trim( $wp->query_vars[$pname] ) ) {
-			$affiliate_id = $maybe_affiliate_id;
+		$maybe_affiliate_id = intval( apply_filters( 'affiliates_parse_request_affiliate_id', $wp->query_vars[$pname], $affiliate_id ) );
+		if ( $maybe_affiliate_id > 0 && $maybe_affiliate_id !== $affiliate_id ) {
+			$maybe_affiliate_id = affiliates_check_affiliate_id_encoded( $maybe_affiliate_id );
+			if ( $maybe_affiliate_id !== false ) {
+				$affiliate_id = $maybe_affiliate_id;
+			}
 		}
 	}
 
@@ -1558,7 +1618,7 @@ function affiliates_encode_affiliate_id( $affiliate_id ) {
  */
 function affiliates_check_affiliate_id_encoded( $affiliate_id ) {
 
-	global $wpdb, $affiliates_options;
+	global $affiliates_options;
 
 	$id_encoding = get_option( 'aff_id_encoding', AFFILIATES_NO_ID_ENCODING );
 	switch( $id_encoding ) {
@@ -1577,7 +1637,6 @@ function affiliates_check_affiliate_id_encoded( $affiliate_id ) {
  * @return int|boolean returns the affiliate id if valid, otherwise FALSE
  */
 function affiliates_check_affiliate_id( $affiliate_id ) {
-
 	global $wpdb;
 	$result = FALSE;
 	$today = date( 'Y-m-d', time() );
@@ -1596,7 +1655,6 @@ function affiliates_check_affiliate_id( $affiliate_id ) {
  * @return int|boolean returns the (unencoded) affiliate id if valid, otherwise FALSE
  */
 function affiliates_check_affiliate_id_md5( $affiliate_id_md5 ) {
-
 	global $wpdb;
 	$result = FALSE;
 	$today = date( 'Y-m-d', time() );
@@ -1625,7 +1683,6 @@ function affiliates_get_direct_id() {
 	}
 	return $result;
 }
- 
 
 // only needed when in admin
 if ( is_admin() ) {

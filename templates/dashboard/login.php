@@ -35,11 +35,22 @@ if ( !defined( 'ABSPATH' ) ) {
 /**
  * @var Affiliates_Dashboard_Login $section Section object available for use in the template.
  */
-
-if ( !is_user_logged_in() ) {
-	?>
+?>
+<?php if ( !is_user_logged_in() ) : ?>
 	<h2><?php esc_html_e( 'Login', 'affiliates' ); ?></h2>
-	<p><?php esc_html_e( 'Please log in to access the affiliate area.', 'affiliates' ); ?></p>
-	<?php
-	echo Affiliates_Shortcodes::affiliates_login_redirect( array() );
-}
+	<div class="dashboard-section dashboard-section-login">
+		<p><?php esc_html_e( 'Please log in to access the affiliate area.', 'affiliates' ); ?></p>
+		<?php echo wp_login_form( array( 'echo' => false, 'redirect' => get_permalink() ) ); ?>
+	</div>
+<?php endif; ?>
+<style type="text/css">
+	.dashboard-section-login .login-username label,
+	.dashboard-section-login .login-password label {
+		display: block;
+	}
+	.dashboard-section-login .login-username input,
+	.dashboard-section-login .login-password input {
+		max-width: 100%;
+		width: 320px;
+	}
+</style>

@@ -37,8 +37,9 @@ if ( !defined( 'ABSPATH' ) ) {
  */
 
 $totals    = $section->get_totals();
-$hits      = isset( $totals['hits'] ) ? intval( $totals['hits'] ) : 0;
+// $hits      = isset( $totals['hits'] ) ? intval( $totals['hits'] ) : 0;
 $visits    = isset( $totals['visits'] ) ? intval( $totals['visits'] ) : 0;
+$referrals = isset( $totals['referrals'] ) ? intval( $totals['referrals'] ) : 0;
 $amounts   = array();
 if ( isset( $totals['amounts_by_currency'] ) ) {
 	foreach ( $totals['amounts_by_currency'] as $currency_id => $amount ) {
@@ -57,19 +58,25 @@ $link_info  = wp_kses(
 	<div class="stats-container" style="display:flex">
 		<div class="stats-item" style="flex-grow:1">
 			<div class="stats-item-heading"><?php _e( 'Recent Visits', 'affiliates' ); ?></div>
-			<div class="stats-item-value"><?php echo esc_html( $hits ); ?></div>
-		</div>
-		<div class="stats-item" style="flex-grow:1">
-			<div class="stats-item-heading"><?php _e( 'Recent Referrals', 'affiliates' ); ?></div>
 			<div class="stats-item-value"><?php echo esc_html( $visits ); ?></div>
 		</div>
 		<div class="stats-item" style="flex-grow:1">
+			<div class="stats-item-heading"><?php _e( 'Recent Referrals', 'affiliates' ); ?></div>
+			<div class="stats-item-value"><?php echo esc_html( $referrals ); ?></div>
+		</div>
+		<div class="stats-item" style="flex-grow:1">
 			<div class="stats-item-heading"><?php _e( 'Recent Earnings', 'affiliates' )?></div>
-			<?php foreach ( $amounts as $currency_id => $amount ) { ?>
+			<?php if ( count ( $amounts ) > 0 ) :?>
+				<?php foreach ( $amounts as $currency_id => $amount ) : ?>
+					<div class="stats-item-value">
+						<span class="stats-item-currency"><?php echo esc_html( $currency_id ); ?></span> <span class="stats-item-amount"><?php echo esc_html( $amount ); ?></span>
+					</div>
+				<?php endforeach; ?>
+			<?php else :?>
 				<div class="stats-item-value">
-					<span class="stats-item-currency"><?php echo esc_html( $currency_id ); ?> <span class="stats-item-amount"><?php echo esc_html( $amount ); ?></span>
+					<span class="stats-item-currency"><span class="stats-item-amount">0</span>
 				</div>
-			<?php } ?>
+			<?php endif; ?>
 		</div>
 	</div>
 	<div id="affiliates-dashboard-overview-graph" class="graph" style="width:100%; height: 400px;"></div>
@@ -88,13 +95,16 @@ $link_info  = wp_kses(
 			<?php echo $link_info; ?>
 		</p>
 	</div>
-</div>
+	<div class="affiliates-dashboard-logout">
+		<a href="<?php echo esc_url( wp_logout_url() ) ?>"><?php esc_html_e( 'Log out', 'affiliates' ); ?></a>
+	</div>
+</div><?php // .dashboard-section-overview ?>
 
 <style type="text/css">
-.dashboard-section .stats-container {
+.dashboard-section-overview .stats-container {
 	margin: 0;
 }
-.dashboard-section .stats-item {
+.dashboard-section-overview .stats-item {
 	background-color: #f2f2f2;
 	border-radius: 4px;
 	margin: 4px;
@@ -102,41 +112,46 @@ $link_info  = wp_kses(
 	text-align: center;
 	font-size: 16px;
 }
-.dashboard-section .stats-item .stats-item-heading {
+.dashboard-section-overview .stats-item .stats-item-heading {
 	font-weight: bold;
 }
-.dashboard-section .stats-item .stats-item-value {
+.dashboard-section-overview .stats-item .stats-item-value {
 	font-size: 24px;
 }
-.dashboard-section .graph {
+.dashboard-section-overview .graph {
 	background-color: #fafafa;
 	border-radius: 4px;
 	margin: 4px;
 }
-.dashboard-section .legend {
+.dashboard-section-overview .legend {
 	display: flex;
 	text-align: center;
 	background-color: #f2f2f2;
 	border-radius: 4px;
 	margin: 4px;
 }
-.dashboard-section .legend-item {
+.dashboard-section-overview .legend-item {
 flex-grow:1;
 }
-.dashboard-section .legend-item.active {
+.dashboard-section-overview .legend-item.active {
 	background-color: #e0e0e0;
 	border-radius: 2px;
 }
-.dashboard-section .legend-item-label {
+.dashboard-section-overview .legend-item-label {
 	font-size: 14px;
 	display:inline-block;
 	vertical-align:middle;
 	padding: 4px;
 }
-.dashboard-section .legend-item-color {
+.dashboard-section-overview .legend-item-color {
 	width: 16px;
 	height: 16px;
 	display:inline-block;
 	vertical-align:middle;
+}
+.dashboard-section-overview .affiliates-dashboard-logout {
+	margin: 4px;
+	padding: 4px;
+	text-align: right;
 }
 </style>

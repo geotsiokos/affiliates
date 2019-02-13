@@ -112,7 +112,7 @@ class Affiliates_Dashboard_Overview extends Affiliates_Dashboard_Section {
 		$hits_total = 0;
 		$visits_total = 0;
 		$referrals_total = 0;
-		$amount_by_currency_total = array();
+		$amounts_by_currency_total = array();
 
 		// hits per day
 		$query = "SELECT date, sum(count) as hits FROM $hits_table WHERE date >= %s AND date <= %s AND affiliate_id = %d GROUP BY date";
@@ -173,6 +173,8 @@ class Affiliates_Dashboard_Overview extends Affiliates_Dashboard_Section {
 			// For referrals we add an item with accumulated daily value.
 			if ( isset( $referrals[$date] ) ) {
 				$referrals_series[] = array( $day, intval( $referrals[$date] ) );
+			} else {
+				$referrals_series[] = array( $day, 0 );
 			}
 			// For hits we add daily hits where there are any, otherwise we add a zero entry.
 			if ( isset( $hits[$date] ) ) {
@@ -190,9 +192,9 @@ class Affiliates_Dashboard_Overview extends Affiliates_Dashboard_Section {
 			// otherwise add a 0 entry for the date.
 			foreach ( $amounts_by_currency as $currency_id => $amounts ) {
 				if ( isset( $amounts_by_currency[$currency_id][$date] ) ) {
-					$amounts_by_currency_series[$currency_id][] = array( $day, floatval( $amounts_by_currency[$currency_id][$date] ) );
+					$amounts_by_currency_series[$currency_id][] = array( $day, affiliates_format_referral_amount( floatval( $amounts_by_currency[$currency_id][$date] ), 'display' ) );
 				} else {
-					$amounts_by_currency_series[$currency_id][] = array( $day, 0.0 );
+					$amounts_by_currency_series[$currency_id][] = array( $day, affiliates_format_referral_amount( 0.0, 'display' ) );
 				}
 			}
 			// Add a tick per month at day 1
